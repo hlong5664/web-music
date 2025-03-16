@@ -16,34 +16,35 @@ export default async function CategoryDetailPage(props: any) {
   const { id } = await props.params;
   let dataFinal: any = null;
 
-  onValue(ref(dbFirebase, '/categories/' + id), (item) => {
+  onValue(ref(dbFirebase, "/categories/" + id), (item) => {
     dataFinal = item.val();
-  })
+  });
 
   const dataSection2: any[] = [];
-  const songRef = ref(dbFirebase, 'songs');
+  const songRef = ref(dbFirebase, "songs");
   onValue(songRef, (items) => {
     items.forEach((item) => {
       const key = item.key;
       const data = item.val();
 
-      if(data.categoryId === id) {
-        onValue(ref(dbFirebase, '/singers/' + data.singerId[0]), (itemSinger) => {
-          const dataSinger = itemSinger.val();
-          dataSection2.push(
-            {
+      if (data.categoryId === id) {
+        onValue(
+          ref(dbFirebase, "/singers/" + data.singerId[0]),
+          (itemSinger) => {
+            const dataSinger = itemSinger.val();
+            dataSection2.push({
               id: key,
               image: data.image,
               title: data.title,
               singer: dataSinger.title,
               link: `/song/${key}`,
               time: "4:32",
-              audio: data.audio
-            }
-          );
-        })
+              audio: data.audio,
+            });
+          }
+        );
       }
-    })
+    });
   });
 
   return (
