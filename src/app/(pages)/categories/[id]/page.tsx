@@ -1,65 +1,79 @@
+"use client";
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 import { CardInfo } from "@/app/components/card/CardInfo";
 import { SongItem2 } from "@/app/components/song/SongItem2";
 import { Title } from "@/app/components/title/Title";
 import { dbFirebase } from "@/app/firebaseConfig";
-import { onValue, ref } from "firebase/database";
-import type { Metadata } from "next";
+import { get, ref } from "firebase/database";
+import { useEffect, useState } from "react";
 
-export const metadata: Metadata = {
-  title: "Danh sách bài hát theo danh mục",
-  description: "Project nghe nhạc trực tuyến",
-};
+export default function CategoryDetailPage({ params }: any) {
+  const { id } = params;
+  const [dataFinal, setDataFinal] = useState<any>(null);
+  const [dataSection2, setDataSection2] = useState<any[]>([]);
 
-export default async function CategoryDetailPage(props: any) {
-  const { id } = await props.params;
-  let dataFinal: any = null;
+  useEffect(() => {
+    const fetchData = async () => {
+      // Lấy thông tin danh mục
+      const categorySnapshot = await get(ref(dbFirebase, `/categories/${id}`));
+      setDataFinal(categorySnapshot.val());
 
-  onValue(ref(dbFirebase, "/categories/" + id), (item) => {
-    dataFinal = item.val();
-  });
+      // Lấy danh sách bài hát thuộc danh mục
+      const songSnapshot = await get(ref(dbFirebase, "songs"));
+      const songs: any[] = [];
 
-  const dataSection2: any[] = [];
-  const songRef = ref(dbFirebase, "songs");
-  onValue(songRef, (items) => {
-    items.forEach((item) => {
-      const key = item.key;
-      const data = item.val();
+      songSnapshot.forEach((item) => {
+        const key = item.key;
+        const data = item.val();
 
-      if (data.categoryId === id) {
-        onValue(
-          ref(dbFirebase, "/singers/" + data.singerId[0]),
-          (itemSinger) => {
-            const dataSinger = itemSinger.val();
-            dataSection2.push({
-              id: key,
-              image: data.image,
-              title: data.title,
-              singer: dataSinger.title,
-              link: `/song/${key}`,
-              time: "4:32",
-              audio: data.audio,
-            });
-          }
-        );
-      }
-    });
-  });
+        if (data.categoryId === id) {
+          songs.push({
+            id: key,
+            image: data.image,
+            title: data.title,
+            singerId: data.singerId[0],
+            link: `/song/${key}`,
+            time: "4:32",
+            audio: data.audio,
+          });
+        }
+      });
+
+      // Lấy thông tin ca sĩ của từng bài hát
+      const updatedSongs = await Promise.all(
+        songs.map(async (song) => {
+          const singerSnapshot = await get(
+            ref(dbFirebase, `/singers/${song.singerId}`)
+          );
+          return {
+            ...song,
+            singer: singerSnapshot.val()?.title || "Unknown",
+          };
+        })
+      );
+
+      setDataSection2(updatedSongs);
+    };
+
+    fetchData();
+  }, [id]);
 
   return (
     <>
       {/* CardInfo */}
-      <CardInfo
-        image={dataFinal.image}
-        title={dataFinal.title}
-        description={dataFinal.description}
-      />
+      {dataFinal && (
+        <CardInfo
+          image={dataFinal.image}
+          title={dataFinal.title}
+          description={dataFinal.description}
+        />
+      )}
 
       {/* Section 2 */}
       <div className="mt-[30px]">
         <Title text="Danh Sách Bài Hát" />
-
         <div className="grid grid-cols-1 gap-[10px]">
           {dataSection2.map((item, index) => (
             <SongItem2 key={index} item={item} />
