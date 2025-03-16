@@ -1,34 +1,49 @@
+"use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CardItem } from "@/app/components/card/CardItem";
 import { Title } from "@/app/components/title/Title";
 import { dbFirebase } from "@/app/firebaseConfig";
-import { onValue, ref } from "firebase/database";
-import type { Metadata } from "next";
+import { onValue, ref, off } from "firebase/database";
+// import { Metadata } from "next";
+import { useEffect, useState } from "react";
 
-export const metadata: Metadata = {
-  title: "Danh mục bài hát",
-  description: "Project nghe nhạc trực tuyến",
-};
+// export const metadata: Metadata = {
+//   title: "Danh mục bài hát",
+//   description: "Project nghe nhạc trực tuyến",
+// };
 
 export default function CategoryPage() {
-  const dataFinal: any[] = [];
-  const categoryRef = ref(dbFirebase, 'categories');
-  onValue(categoryRef, (items) => {
-    items.forEach((item) => {
-      const key = item.key;
-      const data = item.val();
+  // 1. Tạo state để lưu danh sách categories
+  const [categoriesData, setCategoriesData] = useState<any[]>([]);
 
-      dataFinal.push(
-        {
+  useEffect(() => {
+    // 2. Tham chiếu đến "categories" trên Firebase
+    const categoriesRef = ref(dbFirebase, "categories");
+
+    // 3. Lắng nghe dữ liệu (onValue) và set lại state
+    const unsubscribe = onValue(categoriesRef, (snapshot) => {
+      const newCategoriesData: any[] = [];
+      snapshot.forEach((item) => {
+        const key = item.key;
+        const data = item.val();
+        newCategoriesData.push({
           id: key,
           image: data.image,
           title: data.title,
           description: data.description,
-          link: `/categories/${key}`
-        }
-      );
-    })
-  });
+          link: `/categories/${key}`,
+        });
+      });
+      setCategoriesData(newCategoriesData);
+    });
+
+    // 4. Cleanup (hủy lắng nghe) khi unmount
+    return () => {
+      off(categoriesRef);
+      // Hoặc dùng:
+      // unsubscribe();
+    };
+  }, []);
 
   return (
     <>
@@ -36,7 +51,7 @@ export default function CategoryPage() {
         <Title text="Danh Mục Bài Hát" />
       </div>
       <div className="grid grid-cols-5 gap-[20px]">
-        {dataFinal.map((item, index) => (
+        {categoriesData.map((item, index) => (
           <CardItem key={index} item={item} />
         ))}
       </div>
