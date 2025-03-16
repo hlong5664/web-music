@@ -4,7 +4,7 @@
 import { CardItem } from "@/app/components/card/CardItem";
 import { Title } from "@/app/components/title/Title";
 import { dbFirebase } from "@/app/firebaseConfig";
-import { get, onValue, ref } from "firebase/database";
+import { get, ref } from "firebase/database";
 // import type { Metadata } from "next";
 import { useEffect, useState } from "react";
 
@@ -39,21 +39,6 @@ export default function CategoryPage() {
 
     fetchData();
   }, []);
-
-  // onValue(categoryRef, (items) => {
-  //   items.forEach((item) => {
-  //     const key = item.key;
-  //     const data = item.val();
-
-  //     dataFinal.push({
-  //       id: key,
-  //       image: data.image,
-  //       title: data.title,
-  //       description: data.description,
-  //       link: `/categories/${key}`,
-  //     });
-  //   });
-  // });
 
   return (
     <>
