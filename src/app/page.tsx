@@ -1,100 +1,120 @@
+"use client";
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
-import type { Metadata } from "next";
+// import type { Metadata } from "next";
 import { Title } from "./components/title/Title";
 import { SongItem } from "./components/song/SongItem";
 import { CardItem } from "./components/card/CardItem";
-import { onValue, ref } from "firebase/database";
+import { get, ref } from "firebase/database";
 import { dbFirebase } from "./firebaseConfig";
+import { useEffect, useState } from "react";
 
-export const metadata: Metadata = {
-  title: "Trang chủ",
-  description: "Project nghe nhạc trực tuyến",
-};
+// export const metadata: Metadata = {
+//   title: "Trang chủ",
+//   description: "Project nghe nhạc trực tuyến",
+// };
 
 export default function Home() {
-  // Section 1
-  const dataSection1: any[] = [];
-  const songRef = ref(dbFirebase, 'songs');
-  onValue(songRef, (items) => {
-    items.forEach((item) => {
-      const key = item.key;
-      const data = item.val();
+  const [dataSection1, setDataSection1] = useState<any[]>([]);
+  const [dataSection2, setDataSection2] = useState<any[]>([]);
+  const [dataSection3, setDataSection3] = useState<any[]>([]);
 
-      if(dataSection1.length < 3) {
-        onValue(ref(dbFirebase, '/singers/' + data.singerId[0]), (itemSinger) => {
-          const dataSinger = itemSinger.val();
-          dataSection1.push(
-            {
-              id: key,
-              image: data.image,
-              title: data.title,
-              singer: dataSinger.title,
-              listen: data.listen,
-              link: `/song/${key}`,
-              audio: data.audio,
-              wishlist: data.wishlist
-            }
+  useEffect(() => {
+    const fetchSongs = async () => {
+      const snapshot = await get(ref(dbFirebase, "songs"));
+      const tempSongs: any[] = [];
+
+      snapshot.forEach((item) => {
+        if (tempSongs.length < 3) {
+          const key = item.key;
+          const data = item.val();
+
+          tempSongs.push({
+            id: key,
+            image: data.image,
+            title: data.title,
+            singerId: data.singerId[0],
+            listen: data.listen,
+            link: `/song/${key}`,
+            audio: data.audio,
+            wishlist: data.wishlist,
+          });
+        }
+      });
+
+      // Lấy thông tin ca sĩ cho từng bài hát
+      const updatedSongs = await Promise.all(
+        tempSongs.map(async (song) => {
+          const singerSnap = await get(
+            ref(dbFirebase, `/singers/${song.singerId}`)
           );
+          return {
+            ...song,
+            singer: singerSnap.val()?.title || "Unknown",
+          };
         })
-      }
-    })
-  });
-  // End Section 1
+      );
 
-  // Section 2
-  const dataSection2: any[] = [];
-  const categoryRef = ref(dbFirebase, 'categories');
-  onValue(categoryRef, (items) => {
-    items.forEach((item) => {
-      const key = item.key;
-      const data = item.val();
+      setDataSection1(updatedSongs);
+    };
 
-      if(dataSection2.length < 5) {
-        dataSection2.push(
-          {
+    const fetchCategories = async () => {
+      const snapshot = await get(ref(dbFirebase, "categories"));
+      const categories: any[] = [];
+
+      snapshot.forEach((item) => {
+        if (categories.length < 5) {
+          const key = item.key;
+          const data = item.val();
+
+          categories.push({
             id: key,
             image: data.image,
             title: data.title,
             description: data.description,
-            link: `/categories/${key}`
-          }
-        );
-      }
-    })
-  });
-  // End Section 2
+            link: `/categories/${key}`,
+          });
+        }
+      });
 
-  // Section 3
-  const dataSection3: any[] = [];
-  const singerRef = ref(dbFirebase, 'singers');
-  onValue(singerRef, (items) => {
-    items.forEach((item) => {
-      const key = item.key;
-      const data = item.val();
+      setDataSection2(categories);
+    };
 
-      if(dataSection3.length < 5) {
-        dataSection3.push(
-          {
+    const fetchSingers = async () => {
+      const snapshot = await get(ref(dbFirebase, "singers"));
+      const singers: any[] = [];
+
+      snapshot.forEach((item) => {
+        if (singers.length < 5) {
+          const key = item.key;
+          const data = item.val();
+
+          singers.push({
             id: key,
             image: data.image,
             title: data.title,
             description: data.description,
-            link: `/singers/${key}`
-          }
-        );
-      }
-    })
-  });
-  // End Section 3
+            link: `/singers/${key}`,
+          });
+        }
+      });
+
+      setDataSection3(singers);
+    };
+
+    fetchSongs();
+    fetchCategories();
+    fetchSingers();
+  }, []);
 
   return (
     <>
       {/* Section 1: Banner Home + Nghe Nhiều */}
       <div className="flex items-start">
         <div className="w-[534px]">
-          <div 
-            className="w-full flex items-center rounded-[15px] bg-cover" 
+          <div
+            className="w-full flex items-center rounded-[15px] bg-cover"
             style={{ backgroundImage: "url('/demo/background-1.png')" }}
           >
             <div className="flex-1 mr-[34px] ml-[30px]">
@@ -102,14 +122,15 @@ export default function Home() {
                 Nhạc EDM
               </div>
               <div className="font-[500] text-[14px] text-white">
-                Top 100 Nhạc Electronic/Dance Âu Mỹ là danh sách 100 ca khúc hot nhất hiện tại của thể loại Top 100 Nhạc Electronic/Dance Âu Mỹ
+                Top 100 Nhạc Electronic/Dance Âu Mỹ là danh sách 100 ca khúc hot
+                nhất hiện tại của thể loại Top 100 Nhạc Electronic/Dance Âu Mỹ
               </div>
             </div>
             <div className="w-[215px] mr-[22px] mt-[48px]">
-              <img 
-                src="/demo/image-2.png" 
-                alt="Nhạc EDM" 
-                className="w-full h-auto" 
+              <img
+                src="/demo/image-2.png"
+                alt="Nhạc EDM"
+                className="w-full h-auto"
               />
             </div>
           </div>

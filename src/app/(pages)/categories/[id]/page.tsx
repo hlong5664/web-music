@@ -7,10 +7,15 @@ import { SongItem2 } from "@/app/components/song/SongItem2";
 import { Title } from "@/app/components/title/Title";
 import { dbFirebase } from "@/app/firebaseConfig";
 import { get, ref } from "firebase/database";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 
-export default function CategoryDetailPage({ params }: any) {
-  const { id } = params;
+export default function CategoryDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params); // ✅ Dùng `use()` để unwrap `params`
+
   const [dataFinal, setDataFinal] = useState<any>(null);
   const [dataSection2, setDataSection2] = useState<any[]>([]);
 

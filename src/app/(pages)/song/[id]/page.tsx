@@ -1,77 +1,105 @@
+"use client";
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react/jsx-no-comment-textnodes */
 import { CardInfo } from "@/app/components/card/CardInfo";
 import { SongItem2 } from "@/app/components/song/SongItem2";
 import { Title } from "@/app/components/title/Title";
 import { dbFirebase } from "@/app/firebaseConfig";
-import { onValue, ref } from "firebase/database";
-import type { Metadata } from "next";
+import { get, ref } from "firebase/database";
+import { useEffect, useState, use } from "react";
 
-export const metadata: Metadata = {
-  title: "Chi tiết bài hát",
-  description: "Project nghe nhạc trực tuyến",
-};
+export default function SongDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params); // Dùng `use()` để unwrap `params`
 
-export default async function SongDetailPage(props: any) {
-  const { id } = await props.params;
-  let dataFinal: any = null;
+  const [dataFinal, setDataFinal] = useState<any>(null);
+  const [dataSection3, setDataSection3] = useState<any[]>([]);
 
-  onValue(ref(dbFirebase, '/songs/' + id), (item) => {
-    dataFinal = item.val();
+  useEffect(() => {
+    const fetchData = async () => {
+      // Lấy thông tin bài hát
+      const songSnapshot = await get(ref(dbFirebase, `/songs/${id}`));
+      const songData = songSnapshot.val();
 
-    onValue(ref(dbFirebase, '/singers/' + dataFinal.singerId[0]), (itemSinger) => {
-      const dataSinger = itemSinger.val();
-      dataFinal["singer"] = dataSinger.title;
-    })
-  })
+      if (!songData) return;
 
-  const dataSection3: any[] = [];
-  const songRef = ref(dbFirebase, 'songs');
-  onValue(songRef, (items) => {
-    items.forEach((item) => {
-      const key = item.key;
-      const data = item.val();
+      // Lấy thông tin ca sĩ
+      const singerSnapshot = await get(
+        ref(dbFirebase, `/singers/${songData.singerId[0]}`)
+      );
+      const singerData = singerSnapshot.val();
+      songData["singer"] = singerData?.title || "Unknown";
 
-      if(data.categoryId === dataFinal.categoryId && key !== id) {
-        onValue(ref(dbFirebase, '/singers/' + data.singerId[0]), (itemSinger) => {
-          const dataSinger = itemSinger.val();
-          dataSection3.push(
-            {
-              id: key,
-              image: data.image,
-              title: data.title,
-              singer: dataSinger.title,
-              link: `/song/${key}`,
-              time: "4:32",
-              audio: data.audio
-            }
+      setDataFinal(songData);
+
+      // Lấy danh sách bài hát cùng danh mục
+      const songsSnapshot = await get(ref(dbFirebase, "songs"));
+      const relatedSongs: any[] = [];
+
+      songsSnapshot.forEach((item) => {
+        const key = item.key;
+        const data = item.val();
+
+        if (data.categoryId === songData.categoryId && key !== id) {
+          relatedSongs.push({
+            id: key,
+            image: data.image,
+            title: data.title,
+            singerId: data.singerId[0],
+            link: `/song/${key}`,
+            time: "4:32",
+            audio: data.audio,
+          });
+        }
+      });
+
+      // Lấy thông tin ca sĩ của từng bài hát liên quan
+      const updatedSongs = await Promise.all(
+        relatedSongs.map(async (song) => {
+          const singerSnap = await get(
+            ref(dbFirebase, `/singers/${song.singerId}`)
           );
+          return {
+            ...song,
+            singer: singerSnap.val()?.title || "Unknown",
+          };
         })
-      }
-    })
-  });
+      );
+
+      setDataSection3(updatedSongs);
+    };
+
+    fetchData();
+  }, [id]);
 
   return (
     <>
       {/* CardInfo */}
-      <CardInfo
-        image={dataFinal.image}
-        title={dataFinal.title}
-        description={dataFinal.singer}
-      />
+      {dataFinal && (
+        <CardInfo
+          image={dataFinal.image}
+          title={dataFinal.title}
+          description={dataFinal.singer}
+        />
+      )}
 
       {/* Lời Bài Hát */}
-      <div className="mt-[30px]">
-        <Title text="Lời Bài Hát" />
-        <div className="bg-[#212121] text-white rounded-[15px] p-[20px] whitespace-pre-line">
-          {dataFinal.lyric}
+      {dataFinal?.lyric && (
+        <div className="mt-[30px]">
+          <Title text="Lời Bài Hát" />
+          <div className="bg-[#212121] text-white rounded-[15px] p-[20px] whitespace-pre-line">
+            {dataFinal.lyric}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Bài Hát Cùng Danh Mục */}
       <div className="mt-[30px]">
         <Title text="Bài Hát Cùng Danh Mục" />
-
         <div className="grid grid-cols-1 gap-[10px]">
           {dataSection3.map((item, index) => (
             <SongItem2 key={index} item={item} />
